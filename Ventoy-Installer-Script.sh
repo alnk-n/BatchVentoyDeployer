@@ -91,7 +91,7 @@ for choice in $choices; do
   printf "Copying ISO files from $iso_src to $ventoy_mnt ...\n"
   
   # try to copy all ISO files from source folder to mounted partition
-  sudo cpz "$iso_src/"*.iso "$ventoy_mnt"/ || {
+  rsync -rtvh --progress --inplace "$iso_src/"*.iso "$ventoy_mnt"/ || {
     echo "Failed to copy ISO files to $device."
     sudo umount "$ventoy_mnt"
     continue
