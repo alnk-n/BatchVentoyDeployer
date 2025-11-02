@@ -1,8 +1,12 @@
 #!/bin/bash
 
-#Dependencies: cpz rust binary (https://github.com/SUPERCILEX/fuc/tree/master/cpz), ventoy script from (https://www.ventoy.net/en/download.html)
-#To add an alias, go into ~/.bashrc and under the #Aliases section, add: alias clone-disks=sudo /path/to/your/Ventoy-Installer-Script.sh with everything after the equals sign in quotation marks.
-# VARIABLES
+# Dependencies:
+# - Ventoy script from (https://www.ventoy.net/en/download.html)
+
+# Tips:
+# To add a command alias, go into ~/.bashrc and under the #Aliases section add: alias clone-disks="sudo /path/to/your/Ventoy-Installer-Script.sh"
+
+# Variables:
 iso_src="/home/usbcs/ISOs"
 ventoy_script_src="/home/usbcs/ventoy-1.1.07/Ventoy2Disk.sh"
 
