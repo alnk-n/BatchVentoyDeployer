@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Dependencies:
 # - Ventoy script from (https://www.ventoy.net/en/download.html)
