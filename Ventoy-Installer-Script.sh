@@ -9,6 +9,7 @@
 # Variables:
 iso_src="/home/usbcs/ISOs"
 ventoy_script_src="/home/usbcs/ventoy-1.1.07/Ventoy2Disk.sh"
+marker_file="./.init-setup-marker.txt"
 
 separator() {
   printf '%*s\n' 60 | tr ' ' '-'
@@ -18,6 +19,22 @@ separator() {
 if [ "$(id -u)" -ne 0 ]; then
   echo "This script must be run as root. Exiting."
   exit 1
+fi
+
+# Initial setup check
+if [ ! -f "$marker_file" ]; then
+  echo "Initial setup running..."
+
+  apt update
+  
+  if apt install -y zenity; then
+    echo "Zenity installed successfully."
+  else
+    echo "Failed to install zenity. Exiting."
+    exit 1
+  fi
+  
+  touch "$marker_file"
 fi
 
 printf '%*s\n' 60 | tr ' ' '\n'
