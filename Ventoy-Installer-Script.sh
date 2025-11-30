@@ -10,31 +10,37 @@
 iso_src="/home/usbcs/ISOs"
 ventoy_script_src="/home/usbcs/ventoy-1.1.07/Ventoy2Disk.sh"
 
+separator() {
+  printf '%*s\n' 60 | tr ' ' '-'
+}
+
+printf '%*s\n' 60 | tr ' ' '\n'
 printf "=== Ventoy USB Creator ===\n\n"
 printf "This tool creates bootable Ventoy USB drives.\n"
 printf "WARNING: This process is irreversible. The selected disks will be erased.\n\n"
 
 # list disk names, model
 printf "Detected disks:\n"
-printf '%.0s-' {1..60}; echo
+separator
 lsblk --nodeps -o NAME,MODEL,SIZE | grep -v '^loop'
-printf '%.0s-' {1..60}; echo
+separator
 echo
 
 # ask for disk choices
 printf "(press Enter to exit)\n"
 printf "Enter the disks you wish to format, separated by spaces (e.g. sdd sde sdf):\n"
 read -p "> " choices
-# exits if enter is pressed with nothing selected
+
+# exit if no disks are selected
 if [ -z "$choices" ]; then
-  echo "No disks selected. Exiting."
+  printf "No disks selected. Exiting."
   exit 1
 fi
 
-# checks if ISO source folder exists
+# check if ISO source folder exists
 if [ ! -d "$iso_src" ]; then
-  echo "ISO source folder not found: $iso_src"
-  echo "Create that directory and place your ISO files in there."
+  printf "ISO source folder not found: $iso_src"
+  printf "Create that directory and place your ISO files in there."
   exit 1
 fi
 
@@ -44,7 +50,7 @@ for choice in $choices; do
 
   # check for device
   if [ ! -b "$device" ]; then
-    echo "Error: $device does not exist. Skipping."
+    printf "Error: $device does not exist. Skipping."
     continue
   fi
 
@@ -54,7 +60,7 @@ for choice in $choices; do
 
   # try ventoy script
   sudo "$ventoy_script_src" -I -s -g "$device" || {
-    echo "Ventoy installation failed for $device. Skipping."
+    printf "Ventoy installation failed for $device. Skipping."
     continue
   }
 
@@ -71,19 +77,19 @@ for choice in $choices; do
 
   # check for main ventoy partition
   if [ -z "$ventoy_part" ]; then
-    echo "Could not find Ventoy partition on $device. Skipping."
+    printf "Could not find Ventoy partition on $device. Skipping."
     continue
   fi
 
   # try to mount Ventoy partition
   sudo mount "$ventoy_part" "$ventoy_mnt" || {
-    echo "Failed to mount $ventoy_part to $ventoy_mnt. Skipping."
+    printf "Failed to mount $ventoy_part to $ventoy_mnt. Skipping."
     continue
   }
 
   # try to change permissions so anyone can write to the Ventoy partition
   sudo chmod -R 777 "$ventoy_mnt" || {
-    echo "Failed to change permissions (chmod couldn't change the permissions of the main partition). Skipping."
+    printf "Failed to change permissions (chmod couldn't change the permissions of the main partition). Skipping."
     continue
   }
 
@@ -92,7 +98,7 @@ for choice in $choices; do
   
   # try to copy all ISO files from source folder to mounted partition
   rsync "$iso_src/"*.iso "$ventoy_mnt"/ -v -h --progress || {
-    echo "Failed to copy ISO files to $device."
+    printf "Failed to copy ISO files to $device."
     sudo umount "$ventoy_mnt"
     continue
   }
