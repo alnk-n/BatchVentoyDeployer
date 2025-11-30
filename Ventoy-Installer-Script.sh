@@ -14,6 +14,12 @@ separator() {
   printf '%*s\n' 60 | tr ' ' '-'
 }
 
+# Super-user check
+if [ "$(id -u)" -ne 0 ]; then
+  echo "This script must be run as root. Exiting."
+  exit 1
+fi
+
 printf '%*s\n' 60 | tr ' ' '\n'
 printf "=== Ventoy USB Creator ===\n\n"
 printf "This tool creates bootable Ventoy USB drives.\n"
@@ -59,14 +65,14 @@ for choice in $choices; do
   sleep 1
 
   # try ventoy script
-  sudo "$ventoy_script_src" -I -s -g "$device" || {
+  "$ventoy_script_src" -I -s -g "$device" || {
     printf "Ventoy installation failed for $device. Skipping."
     continue
   }
 
   # make dynamic mount point using selected disk input
   ventoy_mnt="/mnt/ventoy_$choice"
-  sudo mkdir -p "$ventoy_mnt"
+  mkdir -p "$ventoy_mnt"
 
   echo
   printf "Mounting Ventoy data partition for $device...\n"
@@ -82,13 +88,13 @@ for choice in $choices; do
   fi
 
   # try to mount Ventoy partition
-  sudo mount "$ventoy_part" "$ventoy_mnt" || {
+  mount "$ventoy_part" "$ventoy_mnt" || {
     printf "Failed to mount $ventoy_part to $ventoy_mnt. Skipping."
     continue
   }
 
   # try to change permissions so anyone can write to the Ventoy partition
-  sudo chmod -R 777 "$ventoy_mnt" || {
+  chmod -R 777 "$ventoy_mnt" || {
     printf "Failed to change permissions (chmod couldn't change the permissions of the main partition). Skipping."
     continue
   }
@@ -99,7 +105,7 @@ for choice in $choices; do
   # try to copy all ISO files from source folder to mounted partition
   rsync "$iso_src/"*.iso "$ventoy_mnt"/ -v -h --progress || {
     printf "Failed to copy ISO files to $device."
-    sudo umount "$ventoy_mnt"
+    umount "$ventoy_mnt"
     continue
   }
 
@@ -107,8 +113,8 @@ for choice in $choices; do
   printf "Unmounting $ventoy_mnt...\n"
 
   # unmount ventoy partition and remove temporary mount point
-  sudo umount "$ventoy_mnt"
-  sudo rmdir "$ventoy_mnt"
+  umount "$ventoy_mnt"
+  rmdir "$ventoy_mnt"
 
   echo
   printf "Ventoy USB on $device is ready!\n"
