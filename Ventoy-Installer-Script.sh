@@ -69,7 +69,7 @@ fi
 
 # Main script
 # -------------------------------------------------------------------------
-tput clear
+reset
 printf "=== Ventoy USB Creator ===\n\n"
 printf "This tool creates bootable Ventoy USB drives.\n"
 printf "WARNING: This process is irreversible. The selected disks will be erased.\n\n"
