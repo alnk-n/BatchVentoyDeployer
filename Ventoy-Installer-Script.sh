@@ -8,7 +8,8 @@
 
 # Variables:
 iso_src="$HOME/ISOs"
-ventoy_script_src="./ventoy-1.1.07/Ventoy2Disk.sh"
+ventoy_archive_name="ventoy-1.1.07-linux.tar.gz"
+ventoy_script_src="./$ventoy_archive_name/Ventoy2Disk.sh"
 marker_file="./.init-setup-marker.txt"
 
 separator() {
@@ -56,7 +57,7 @@ if [ ! -f "$marker_file" ]; then
   # cURL Ventoy script and extract it from the archive
   if curl -i https://github.com/ventoy/Ventoy/releases/download/v1.1.07/ventoy-1.1.07-linux.tar.gz -O; then
     printf "★ Ventoy tarball downloaded successfully.\n"
-    tar -xvzf ./ventoy-1.1.07.tar.gz; rm -f ./ventoy-1.1.07.tar.gz
+    tar -xvzf ./$ventoy_archive_name; rm -f ./$ventoy_archive_name
     printf "★ Ventoy tarball extracted successfully.\n"
   else
     printf "★ Failed to download Ventoy tarball. Exiting.\n"
