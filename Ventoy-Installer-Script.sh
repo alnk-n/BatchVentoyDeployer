@@ -87,7 +87,7 @@ read -p "> " choices
 
 # Exit if no disks are selected
 if [ -z "$choices" ]; then
-  printf "No disks selected. Exiting."
+  printf "No disks selected. Exiting.\n"
   exit 1
 fi
 
@@ -97,7 +97,7 @@ for choice in $choices; do
 
   # check for device
   if [ ! -b "$device" ]; then
-    printf "Error: $device does not exist. Skipping."
+    printf "Error: $device does not exist. Skipping.\n"
     continue
   fi
 
@@ -107,7 +107,7 @@ for choice in $choices; do
 
   # Try using Ventoy script
   "$ventoy_script_src" -I -s -g "$device" || {
-    printf "Ventoy installation failed for $device. Skipping."
+    printf "Ventoy installation failed for $device. Skipping.\n"
     continue
   }
 
@@ -124,19 +124,19 @@ for choice in $choices; do
 
   # Check for main Ventoy partition
   if [ -z "$ventoy_part" ]; then
-    printf "Could not find Ventoy partition on $device. Skipping."
+    printf "Could not find Ventoy partition on $device. Skipping.\n"
     continue
   fi
 
   # Try to mount main Ventoy partition
   mount "$ventoy_part" "$ventoy_mnt" || {
-    printf "Failed to mount $ventoy_part to $ventoy_mnt. Skipping."
+    printf "Failed to mount $ventoy_part to $ventoy_mnt. Skipping.\n"
     continue
   }
 
   # Give anyone write permissions to the Ventoy partition
   chmod -R 777 "$ventoy_mnt" || {
-    printf "Failed to change permissions (chmod couldn't change the permissions of the main partition). Skipping."
+    printf "Failed to change permissions (chmod couldn't change the permissions of the main partition). Skipping.\n"
     continue
   }
 
@@ -145,7 +145,7 @@ for choice in $choices; do
   
   # try to copy all ISO files from source folder to mounted partition
   rsync "$iso_src/"*.iso "$ventoy_mnt"/ -v -h --progress || {
-    printf "Failed to copy ISO files to $device."
+    printf "Failed to copy ISO files to $device.\n"
     umount "$ventoy_mnt"
     continue
   }
