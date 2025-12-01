@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Dependencies:
-# - Ventoy script from (https://www.ventoy.net/en/download.html)
-
 # Tips:
 # To add a command alias, go into ~/.bashrc and under the #Aliases section add: alias clone-disks="sudo /path/to/your/Ventoy-Installer-Script.sh"
 
