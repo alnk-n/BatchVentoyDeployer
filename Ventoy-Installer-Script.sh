@@ -55,7 +55,7 @@ if [ ! -f "$marker_file" ]; then
   fi
 
   # cURL Ventoy script and extract it from the archive
-  if curl -i https://github.com/ventoy/Ventoy/releases/download/v1.1.07/ventoy-1.1.07-linux.tar.gz -O; then
+  if curl -L -O https://github.com/ventoy/Ventoy/releases/download/v1.1.07/ventoy-1.1.07-linux.tar.gz; then
     printf "★ Ventoy tarball downloaded successfully.\n"
     tar -xvzf ./$ventoy_archive_name; rm -f ./$ventoy_archive_name
     printf "★ Ventoy tarball extracted successfully.\n"
