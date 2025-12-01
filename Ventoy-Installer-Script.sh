@@ -24,42 +24,42 @@ fi
 # Initial setup check
 # -------------------------------------------------------------------------
 if [ ! -f "$marker_file" ]; then
-  printf "Initial setup running..."
+  printf "★ Initial setup running..."
 
   apt update
   
   # Create ISO source folder
   if [ ! -d "$iso_src" ]; then
   mkdir "$iso_src"
-  printf "- Created ISO source folder @: $iso_src"
-  printf "- Place your ISO files in this directory."
+  printf "★ Created ISO source folder @: $iso_src"
+  printf "★ Place your ISO files in this directory."
   else
-  printf "- ISO source folder exists @ $iso_src. Continuing."
+  printf "★ ISO source folder exists @ $iso_src. Continuing."
   fi
 
   # Install Zenity
   if apt install -y zenity; then
-    printf "- Zenity installed successfully."
+    printf "★ Zenity installed successfully."
   else
-    printf "- Failed to install zenity. Exiting."
+    printf "★ Failed to install zenity. Exiting."
     exit 1
   fi
 
   # Check for Curl installation
   if dpkg -l | grep -q "curl"; then
-    printf "- Curl is installed."
+    printf "★ Curl is installed."
   else
-    printf "- Curl is not installed. Downloading."
+    printf "★ Curl is not installed. Downloading."
         sudo apt-get update && sudo apt-get install curl
   fi
 
   # cURL Ventoy script and extract it from the archive
   if curl -i https://github.com/ventoy/Ventoy/releases/download/v1.1.07/ventoy-1.1.07-linux.tar.gz -O; then
-    printf "- Ventoy tarball downloaded successfully."
+    printf "★ Ventoy tarball downloaded successfully."
     tar -xvzf ./ventoy-1.1.07.tar.gz; rm -f ./ventoy-1.1.07.tar.gz
-    printf "- Ventoy tarball extracted successfully."   
+    printf "★ Ventoy tarball extracted successfully."   
   else
-    printf "- Failed to download Ventoy tarball. Exiting."
+    printf "★ Failed to download Ventoy tarball. Exiting."
     exit 1
   fi
 
