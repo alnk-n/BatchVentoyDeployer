@@ -4,8 +4,8 @@
 # To add a command alias, go into ~/.bashrc and under the #Aliases section add: alias clone-disks="sudo /path/to/your/Ventoy-Installer-Script.sh"
 
 # Variables:
-iso_src="$HOME/ISOs"
-ventoy_archive_name="ventoy-1.1.07-linux.tar.gz"
+iso_src="$(getent passwd ${SUDO_USER:-$USER} | cut -d: -f6)/ISOs"
+ventoy_archive_name="ventoy-1.1.07"
 ventoy_script_src="./$ventoy_archive_name/Ventoy2Disk.sh"
 marker_file="./.init-setup-marker.txt"
 
@@ -104,7 +104,7 @@ for choice in $choices; do
   sleep 1
 
   # Try using Ventoy script
-  "$ventoy_script_src" -I -s -g "$device" || {
+  printf 'y\ny\n' | "$ventoy_script_src" -I -s -g "$device" || {
     printf "Ventoy installation failed for $device. Skipping.\n"
     continue
   }
