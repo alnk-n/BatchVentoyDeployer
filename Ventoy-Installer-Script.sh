@@ -117,6 +117,10 @@ for choice in $choices; do
   printf "Mounting Ventoy data partition for $device...\n"
   sleep 1
 
+  # Wait for kernel to settle partition table and labels before probing
+  udevadm settle --timeout=10
+  sleep 2
+
   # Fetch path to main Ventoy parition on specified drive
   ventoy_part=$(lsblk -o NAME,LABEL -nr "$device" | awk '$2=="Ventoy"{print "/dev/" $1}')
 
