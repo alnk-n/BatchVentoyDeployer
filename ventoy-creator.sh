@@ -4,13 +4,13 @@
 # To add a command alias, go into ~/.bashrc and under the #Aliases section add: alias clone-disks="sudo /path/to/your/Ventoy-Installer-Script.sh"
 
 # Variables:
-iso_src="$(getent passwd ${SUDO_USER:-$USER} | cut -d: -f6)/ISOs"
+iso_src="$(getent passwd "${SUDO_USER:-$USER}" | cut -d: -f6)/ISOs"
 ventoy_archive_name="ventoy-1.1.07"
 ventoy_script_src="./$ventoy_archive_name/Ventoy2Disk.sh"
 marker_file="./.init-setup-marker.txt"
 
 separator() {
-  printf '%*s\n' 60 | tr ' ' '-'
+  printf '%0.s-' {1..60}; echo
 }
 
 # Super-user check
@@ -29,10 +29,10 @@ if [ ! -f "$marker_file" ]; then
   # Create ISO source folder
   if [ ! -d "$iso_src" ]; then
   mkdir "$iso_src"
-  printf "★ Created ISO source folder @: $iso_src\n"
+  printf "★ Created ISO source folder @: %s\n" "$iso_src"
   printf "★ Place your ISO files in this directory.\n"
   else
-  printf "★ ISO source folder exists @ $iso_src. Continuing.\n"
+  printf "★ ISO source folder exists @ %s. Continuing.\n" "$iso_src"
   fi
 
   # Install Zenity
@@ -81,7 +81,7 @@ echo
 # Ask for disk selection
 printf "(press Enter to exit)\n"
 printf "Enter the disks you wish to format, separated by spaces (e.g. sdd sde sdf):\n"
-read -p "> " choices
+read -r -p "> " choices
 
 # Exit if no disks are selected
 if [ -z "$choices" ]; then
@@ -95,17 +95,17 @@ for choice in $choices; do
 
   # check for device
   if [ ! -b "$device" ]; then
-    printf "Error: $device does not exist. Skipping.\n"
+    printf "Error: %s does not exist. Skipping.\n" "$device"
     continue
   fi
 
   echo
-  printf "Formatting $device with Ventoy...\n"
+  printf "Formatting %s with Ventoy...\n" "$device"
   sleep 1
 
   # Try using Ventoy script
   printf 'y\ny\n' | "$ventoy_script_src" -I -s -g "$device" || {
-    printf "Ventoy installation failed for $device. Skipping.\n"
+    printf "Ventoy installation failed for %s. Skipping.\n" "$device"
     continue
   }
 
@@ -114,7 +114,7 @@ for choice in $choices; do
   mkdir -p "$ventoy_mnt"
 
   echo
-  printf "Mounting Ventoy data partition for $device...\n"
+  printf "Mounting Ventoy data partition for %s...\n" "$device"
   sleep 1
 
   # Wait for kernel to settle partition table and labels before probing
@@ -126,13 +126,13 @@ for choice in $choices; do
 
   # Check for main Ventoy partition
   if [ -z "$ventoy_part" ]; then
-    printf "Could not find Ventoy partition on $device. Skipping.\n"
+    printf "Could not find Ventoy partition on %s. Skipping.\n" "$device"
     continue
   fi
 
   # Try to mount main Ventoy partition
   mount "$ventoy_part" "$ventoy_mnt" || {
-    printf "Failed to mount $ventoy_part to $ventoy_mnt. Skipping.\n"
+    printf "Failed to mount %s to %s. Skipping.\n" "$ventoy_part" "$ventoy_mnt"
     continue
   }
 
@@ -143,24 +143,24 @@ for choice in $choices; do
   }
 
   echo
-  printf "Copying ISO files from $iso_src to $ventoy_mnt ...\n"
+  printf "Copying ISO files from %s to %s ...\n" "$iso_src" "$ventoy_mnt"
   
   # try to copy all ISO files from source folder to mounted partition
   rsync "$iso_src/"*.iso "$ventoy_mnt"/ -v -h --progress || {
-    printf "Failed to copy ISO files to $device.\n"
+    printf "Failed to copy ISO files to %s.\n" "$device"
     umount "$ventoy_mnt"
     continue
   }
 
   echo
-  printf "Unmounting $ventoy_mnt...\n"
+  printf "Unmounting %s...\n" "$ventoy_mnt"
 
   # Unmount main Ventoy partition and delete temporary mount point
   umount "$ventoy_mnt"
   rmdir "$ventoy_mnt"
 
   echo
-  printf "Ventoy USB on $device is ready!\n"
+  printf "Ventoy USB on %s is ready!\n" "$device"
 done
 
 echo
