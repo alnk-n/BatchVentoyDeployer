@@ -7,17 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.2.1] - 2026-04-12
-### Fixed
-- Marker version check was comparing full file contents against version string. It now reads line 1 only via `sed -n '1p'`
-- `MARKER_FILE` was resolving to `/root/.local/share/...` under `sudo`. It now uses `/home/$REAL_USER` explicitly
-- `REAL_USER` now falls back to `logname` before `$USER` to correctly identify the invoking user under `sudo`
-- `sed` and `cat` calls in marker checks protected with `|| true` to prevent `set -euo pipefail` exiting silently
-- Ventoy checksum URL corrected to `sha256.txt`. The previously assumed `.sha256` filename returned a 404
-- Checksum verification now strips carriage returns via `tr -d '\r'` before piping to `sha256sum -c`
-
----
-
 ## [0.2.0] - 2026-04-12
 ### Added
 - `SUMMON_COMMAND` variable in `defaults.conf` to customise the global command name without editing scripts
@@ -34,15 +23,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Post-copy integrity check via `rsync --checksum`
 - `[n/total]` progress counter across drives
 - All output logged to `/var/log/ventoyfleet.log` via `tee`
-
 ### Changed
 - Marker file now stores Ventoy version and active summon command, enabling clean rename detection on `--update`
 - Old summon command binary removed from `/usr/local/bin/` when `SUMMON_COMMAND` changes between installs
-- Per-device confirmation replaced with a single upfront prompt listing all selected devices with model and size allows the process to run unattended after one confirmation
+- Per-device confirmation replaced with a single upfront prompt listing all selected devices with model and size, allowing the process to run unattended after one confirmation
 - All user-facing output routed through `lib/ui.sh` helper functions in preparation for a Zenity GUI layer
 - Support files installed to `/usr/local/share/$APP_NAME/`, main script to `/usr/local/bin/$SUMMON_COMMAND`
-
 ### Fixed
+- Marker version check was comparing full file contents against version string — it now reads line 1 only via `sed -n '1p'`
+- `MARKER_FILE` was resolving to `/root/.local/share/...` under `sudo` — it now uses `/home/$REAL_USER` explicitly
+- `REAL_USER` now falls back to `logname` before `$USER` to correctly identify the invoking user under `sudo`
+- `sed` and `cat` calls in marker checks protected with `|| true` to prevent `set -euo pipefail` exiting silently
+- Ventoy checksum URL corrected to `sha256.txt` — the previously assumed `.sha256` filename returned a 404
+- Checksum verification now strips carriage returns via `tr -d '\r'` before piping to `sha256sum -c`
 - Tar extraction was deleting the extracted directory instead of the `.tar.gz` archive
 - `chmod -R 777` removed — rsync runs without relaxing partition permissions
 - `ventoy_mnt` initialised before signal trap to prevent unbound variable errors on early interrupt
