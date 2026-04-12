@@ -1,179 +1,170 @@
 #!/bin/bash
-
-# Tips:
-# To add a command alias, go into ~/.bashrc and under the #Aliases section add: alias clone-disks="sudo /path/to/your/Ventoy-Installer-Script.sh"
-# -------------------------------------------------------------------------
+# BatchVentoyDeployer — batch Ventoy USB creator
+# Usage: sudo <summon_command> [--help|--update]
 
 set -uo pipefail
 
-# Temp directory used for unpacking dependencies, library, etc.
-# -------------------------------------------------------------------------
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BVD_DATA="/usr/local/share/batchventoydeployer"
 
-# External files created for: defaults, ui elements + terminal output/input, disk commands, and everything to do with calling the Ventoy2Disk script.
-# -------------------------------------------------------------------------
-source "$SCRIPT_DIR/config/defaults.conf"
-source "$SCRIPT_DIR/lib/ui.sh"
-source "$SCRIPT_DIR/lib/disk.sh"
-source "$SCRIPT_DIR/lib/ventoy.sh"
+source "$BVD_DATA/config/defaults.conf"
+source "$BVD_DATA/lib/ui.sh"
+source "$BVD_DATA/lib/disk.sh"
+source "$BVD_DATA/lib/ventoy.sh"
 
-# Variables
-# -------------------------------------------------------------------------
-iso_src="$(getent passwd "${SUDO_USER:-$USER}" | cut -d: -f6)/ISOs"
-ventoy_archive_name="ventoy-1.1.07"
-ventoy_script_src="./$ventoy_archive_name/Ventoy2Disk.sh"
-marker_file="./.init-setup-marker.txt"
+# Logging: tee all output to log file
+mkdir -p "$(dirname "$LOG_FILE")"
+exec > >(tee -a "$LOG_FILE") 2>&1
 
-# Super-user check
-# -------------------------------------------------------------------------
+# Flag handling
+case "${1:-}" in
+  --update)
+    exec sudo "/usr/local/share/$APP_NAME/install.sh" --update
+    ;;
+esac
+
+# Superuser check
 if [ "$(id -u)" -ne 0 ]; then
-  echo "This script must be run as root. Exiting."
+  ui_error "This script must be run as root. Try: sudo $SUMMON_COMMAND"
   exit 1
 fi
 
-# Initial setup check
-# -------------------------------------------------------------------------
-if [ ! -f "$marker_file" ]; then
-  printf "★ Initial setup running..."
-
-  apt update
-  
-  # Create ISO source folder
-  if [ ! -d "$iso_src" ]; then
-  mkdir "$iso_src"
-  printf "★ Created ISO source folder @: %s\n" "$iso_src"
-  printf "★ Place your ISO files in this directory.\n"
-  else
-  printf "★ ISO source folder exists @ %s. Continuing.\n" "$iso_src"
-  fi
-
-  # Install Zenity
-  if apt install -y zenity; then
-    printf "★ Zenity installed successfully.\n"
-  else
-    printf "★ Failed to install zenity. Exiting.\n"
-    exit 1
-  fi
-
-  # Check for Curl installation
-  if dpkg -l | grep -q "curl"; then
-    printf "★ Curl is installed.\n"
-  else
-    printf "★ Curl is not installed. Downloading.\n"
-        sudo apt-get update && sudo apt-get install curl
-  fi
-
-  # cURL Ventoy script and extract it from the archive
-  if curl -L -O https://github.com/ventoy/Ventoy/releases/download/v1.1.07/ventoy-1.1.07-linux.tar.gz; then
-    printf "★ Ventoy tarball downloaded successfully.\n"
-    tar -xvzf ./$ventoy_archive_name; rm -f ./$ventoy_archive_name
-    printf "★ Ventoy tarball extracted successfully.\n"
-  else
-    printf "★ Failed to download Ventoy tarball. Exiting.\n"
-    exit 1
-  fi
-
-  touch "$marker_file"
-fi
-
-# Main script
-# -------------------------------------------------------------------------
-printf "\n\n\n"
-printf "=== Ventoy USB Creator ===\n\n"
-printf "This tool creates bootable Ventoy USB drives.\n"
-printf "WARNING: This process is irreversible. The selected disks will be erased.\n\n"
-
-# List disk names, model, size
-printf "Detected disks:\n"
-separator
-lsblk --nodeps -o NAME,MODEL,SIZE | grep -v '^loop'
-separator
-echo
-
-# Ask for disk selection
-printf "(press Enter to exit)\n"
-printf "Enter the disks you wish to format, separated by spaces (e.g. sdd sde sdf):\n"
-read -r -p "> " choices
-
-# Exit if no disks are selected
-if [ -z "$choices" ]; then
-  printf "No disks selected. Exiting.\n"
+# Setup check
+if [ ! -f "$MARKER_FILE" ] || [ "$(cat "$MARKER_FILE")" != "$VENTOY_VERSION" ]; then
+  ui_warn "Setup not complete or Ventoy version changed. Please run: sudo ./install.sh"
   exit 1
 fi
 
-# Copy ISOs to pendrives one by one
-for choice in $choices; do
+# Initialise mount point variable before trap so cleanup is always safe
+ventoy_mnt=""
+
+# Trap for cleanup on interrupt
+trap '
+  ui_warn "Interrupted. Cleaning up..."
+  if [ -n "$ventoy_mnt" ] && mountpoint -q "$ventoy_mnt" 2>/dev/null; then
+    umount "$ventoy_mnt" 2>/dev/null
+    rmdir "$ventoy_mnt" 2>/dev/null
+  fi
+  exit 1
+' INT TERM
+
+# Early ISO check, abort before touching any disks
+iso_count=$(find "$ISO_SRC" -maxdepth 1 -name "*.iso" 2>/dev/null | wc -l)
+if [ "$iso_count" -eq 0 ]; then
+  ui_error "No ISO files found in $ISO_SRC. Add ISOs before running."
+  exit 1
+fi
+
+# UI
+ui_header
+ui_list_disks
+ui_prompt_disk_selection
+
+if [ -z "$DISK_CHOICES" ]; then
+  ui_msg "No disks selected. Exiting."
+  exit 0
+fi
+
+# Validate all inputs up front before touching any disk
+validated_choices=""
+for choice in $DISK_CHOICES; do
   device="/dev/$choice"
 
-  # check for device
-  if [ ! -b "$device" ]; then
-    printf "Error: %s does not exist. Skipping.\n" "$device"
+  if ! disk_is_known "$choice"; then
+    ui_error "$choice is not a recognised disk. Skipping."
     continue
   fi
 
-  echo
-  printf "Formatting %s with Ventoy...\n" "$device"
-  sleep 1
-
-  # Try using Ventoy script
-  printf 'y\ny\n' | "$ventoy_script_src" -I -s -g "$device" || {
-    printf "Ventoy installation failed for %s. Skipping.\n" "$device"
+  if ! disk_exists "$device"; then
+    ui_error "$device does not exist. Skipping."
     continue
-  }
+  fi
 
-  # Create dynamic mount point using selected disk input
+  if disk_is_system_disk "$device"; then
+    ui_error "$device appears to be the system disk. Skipping."
+    continue
+  fi
+
+  validated_choices="$validated_choices $choice"
+done
+
+validated_choices="${validated_choices# }"
+
+if [ -z "$validated_choices" ]; then
+  ui_error "No valid disks remaining after validation. Exiting."
+  exit 1
+fi
+
+# Build device array and show single upfront confirmation
+validated_devices=()
+for choice in $validated_choices; do
+  validated_devices+=("/dev/$choice")
+done
+
+if ! ui_confirm_selection "${validated_devices[@]}"; then
+  ui_msg "Aborted."
+  exit 0
+fi
+
+# Count drives for progress display
+total=$(echo "$validated_choices" | wc -w)
+current=0
+
+for choice in $validated_choices; do
+  current=$((current + 1))
+  device="/dev/$choice"
   ventoy_mnt="/mnt/ventoy_$choice"
-  mkdir -p "$ventoy_mnt"
 
-  echo
-  printf "Mounting Ventoy data partition for %s...\n" "$device"
+  printf "\n[%d/%d] Processing %s\n" "$current" "$total" "$device"
+
+  # Install Ventoy
+  ui_msg "Formatting $device with Ventoy..."
   sleep 1
+  if ! ventoy_install_to "$device"; then
+    ui_error "Ventoy installation failed for $device. Skipping."
+    continue
+  fi
 
-  # Wait for kernel to settle partition table and labels before probing
+  # Settle partition table
   udevadm settle --timeout=10
   sleep 2
 
-  # Fetch path to main Ventoy parition on specified drive
-  ventoy_part=$(lsblk -o NAME,LABEL -nr "$device" | awk '$2=="Ventoy"{print "/dev/" $1}')
-
-  # Check for main Ventoy partition
+  # Find Ventoy partition
+  ventoy_part=$(disk_get_ventoy_part "$device")
   if [ -z "$ventoy_part" ]; then
-    printf "Could not find Ventoy partition on %s. Skipping.\n" "$device"
+    ui_error "Could not find Ventoy partition on $device. Skipping."
     continue
   fi
 
-  # Try to mount main Ventoy partition
-  mount "$ventoy_part" "$ventoy_mnt" || {
-    printf "Failed to mount %s to %s. Skipping.\n" "$ventoy_part" "$ventoy_mnt"
+  # Mount
+  if ! disk_mount "$ventoy_part" "$ventoy_mnt"; then
+    ui_error "Failed to mount $ventoy_part. Skipping."
+    ventoy_mnt=""
     continue
-  }
+  fi
 
-  # Give anyone write permissions to the Ventoy partition
-  chmod -R 777 "$ventoy_mnt" || {
-    printf "Failed to change permissions (chmod couldn't change the permissions of the main partition). Skipping.\n"
+  # Space check
+  required=$(disk_iso_total_size "$ISO_SRC")
+  if ! disk_has_space "$ventoy_mnt" "$required"; then
+    ui_error "Not enough space on $device for all ISOs. Skipping."
+    disk_unmount "$ventoy_mnt"
+    ventoy_mnt=""
     continue
-  }
+  fi
 
-  echo
-  printf "Copying ISO files from %s to %s ...\n" "$iso_src" "$ventoy_mnt"
-  
-  # try to copy all ISO files from source folder to mounted partition
-  rsync "$iso_src/"*.iso "$ventoy_mnt"/ -v -h --progress || {
-    printf "Failed to copy ISO files to %s.\n" "$device"
-    umount "$ventoy_mnt"
+  # Copy ISOs
+  ui_msg "Copying ISOs from $ISO_SRC to $ventoy_mnt..."
+  if ! disk_copy_isos "$ISO_SRC" "$ventoy_mnt"; then
+    ui_error "Failed to copy ISOs to $device."
+    disk_unmount "$ventoy_mnt"
+    ventoy_mnt=""
     continue
-  }
+  fi
 
-  echo
-  printf "Unmounting %s...\n" "$ventoy_mnt"
-
-  # Unmount main Ventoy partition and delete temporary mount point
-  umount "$ventoy_mnt"
-  rmdir "$ventoy_mnt"
-
-  echo
-  printf "Ventoy USB on %s is ready!\n" "$device"
+  # Unmount
+  disk_unmount "$ventoy_mnt"
+  ventoy_mnt=""
+  ui_success "$device is ready."
 done
 
-echo
-printf "All selected USB drives have been processed.\n"
+printf "\n"
+ui_success "All selected drives have been processed."

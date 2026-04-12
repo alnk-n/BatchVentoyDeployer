@@ -60,8 +60,11 @@ fi
 # Install support files to system share directory
 install -d "/usr/local/share/$APP_NAME/lib"
 install -d "/usr/local/share/$APP_NAME/config"
-install -m 644 "$SCRIPT_DIR/lib/"*.sh "/usr/local/share/$APP_NAME/lib/"
-install -m 644 "$SCRIPT_DIR/config/defaults.conf" "/usr/local/share/$APP_NAME/config/"
+if [ "$SCRIPT_DIR" != "/usr/local/share/$APP_NAME" ]; then
+  install -m 644 "$SCRIPT_DIR/lib/"*.sh "/usr/local/share/$APP_NAME/lib/"
+  install -m 644 "$SCRIPT_DIR/config/defaults.conf" "/usr/local/share/$APP_NAME/config/"
+  install -m 755 "$SCRIPT_DIR/install.sh" "/usr/local/share/$APP_NAME/install.sh"
+fi
 
 # Install main script to PATH
 install -m 755 "$SCRIPT_DIR/ventoy-creator.sh" "/usr/local/bin/$SUMMON_COMMAND"
