@@ -2,18 +2,30 @@
 
 # Tips:
 # To add a command alias, go into ~/.bashrc and under the #Aliases section add: alias clone-disks="sudo /path/to/your/Ventoy-Installer-Script.sh"
+# -------------------------------------------------------------------------
 
-# Variables:
+set -uo pipefail
+
+# Temp directory used for unpacking dependencies, library, etc.
+# -------------------------------------------------------------------------
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# External files created for: defaults, ui elements + terminal output/input, disk commands, and everything to do with calling the Ventoy2Disk script.
+# -------------------------------------------------------------------------
+source "$SCRIPT_DIR/config/defaults.conf"
+source "$SCRIPT_DIR/lib/ui.sh"
+source "$SCRIPT_DIR/lib/disk.sh"
+source "$SCRIPT_DIR/lib/ventoy.sh"
+
+# Variables
+# -------------------------------------------------------------------------
 iso_src="$(getent passwd "${SUDO_USER:-$USER}" | cut -d: -f6)/ISOs"
 ventoy_archive_name="ventoy-1.1.07"
 ventoy_script_src="./$ventoy_archive_name/Ventoy2Disk.sh"
 marker_file="./.init-setup-marker.txt"
 
-separator() {
-  printf '%0.s-' {1..60}; echo
-}
-
 # Super-user check
+# -------------------------------------------------------------------------
 if [ "$(id -u)" -ne 0 ]; then
   echo "This script must be run as root. Exiting."
   exit 1

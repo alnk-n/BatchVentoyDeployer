@@ -42,6 +42,18 @@ ui_confirm_device() {
 }
  
 ui_msg()     { printf "%s\n" "$1"; }
-ui_success() { printf "✔︎ %s\n" "$1"; }
+ui_success() { printf "✔ %s\n" "$1"; }
 ui_warn()    { printf "⚠ %s\n" "$1"; }
 ui_error()   { printf "✘ %s\n" "$1" >&2; }
+ 
+# # --- Quick UI Test (remove before production) ---
+# if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+#     ui_header
+#     ui_list_disks
+#     ui_prompt_disk_selection
+#     ui_msg     "Processing your selection: $DISK_CHOICES"
+#     ui_confirm_device "/dev/sda"
+#     ui_success "Device confirmed and formatted successfully."
+#     ui_warn    "This device has an existing Ventoy installation — it will be overwritten."
+#     ui_error   "Failed to write to device: permission denied."
+# fi
