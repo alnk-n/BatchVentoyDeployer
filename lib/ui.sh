@@ -10,7 +10,7 @@ ui_header() {
   printf "\n\n"
   printf "=== Batch Ventoy Deployer ===\n\n"
   printf "Tool used for mass-deploying bootable Ventoy USB drives.\n"
-  printf "Built on the Ventoy2Disk CLI (https://github.com/ventoy/Ventoy) and ❤️ .\n\n"
+  printf "Built on the Ventoy2Disk CLI (https://github.com/ventoy/Ventoy) and ♥︎\n\n"
 }
 
 ui_list_disks() {
@@ -36,7 +36,7 @@ ui_confirm_selection() {
     local model size
     model=$(lsblk --nodeps -no MODEL "$device" 2>/dev/null | xargs)
     size=$(lsblk --nodeps -no SIZE "$device" 2>/dev/null | xargs)
-    printf "  %s — %s %s\n" "$device" "$model" "$size"
+    printf "  %s ・ %s %s\n" "$device" "$model" "$size"
   done
 
   printf "\nThis will destroy all data on the above disks.\n"

@@ -29,7 +29,7 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 # Setup check
-if [ ! -f "$MARKER_FILE" ] || [ "$(cat "$MARKER_FILE")" != "$VENTOY_VERSION" ]; then
+if [ ! -f "$MARKER_FILE" ] || [ "$(sed -n '1p' "$MARKER_FILE" 2>/dev/null || true)" != "$VENTOY_VERSION" ]; then
   ui_warn "Setup not complete or Ventoy version changed. Please run: sudo ./install.sh"
   exit 1
 fi

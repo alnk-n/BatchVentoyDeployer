@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.1] - 2026-04-12
+### Fixed
+- Marker version check was comparing full file contents against version string. It now reads line 1 only via `sed -n '1p'`
+- `MARKER_FILE` was resolving to `/root/.local/share/...` under `sudo`. It now uses `/home/$REAL_USER` explicitly
+- `REAL_USER` now falls back to `logname` before `$USER` to correctly identify the invoking user under `sudo`
+- `sed` and `cat` calls in marker checks protected with `|| true` to prevent `set -euo pipefail` exiting silently
+- Ventoy checksum URL corrected to `sha256.txt`. The previously assumed `.sha256` filename returned a 404
+- Checksum verification now strips carriage returns via `tr -d '\r'` before piping to `sha256sum -c`
+
+---
+
 ## [0.2.0] - 2026-04-12
 ### Added
 - `SUMMON_COMMAND` variable in `defaults.conf` to customise the global command name without editing scripts

@@ -13,21 +13,21 @@ ventoy_download() {
     exit 1
   fi
 
-  local sha_url="${VENTOY_URL}.sha256"
-  local sha_file="${VENTOY_ARCHIVE}.sha256"
-
   ui_msg "Verifying checksum..."
+  local sha_url="https://github.com/ventoy/Ventoy/releases/download/v${VENTOY_VERSION}/sha256.txt"
+  local sha_file="sha256.txt"
+
   if curl -L -o "$sha_file" "$sha_url" 2>/dev/null; then
-    if sha256sum -c "$sha_file"; then
+    if grep "$VENTOY_ARCHIVE" "$sha_file" | tr -d '\r' | sha256sum -c -; then
       ui_success "Checksum verified."
       rm -f "$sha_file"
     else
-      ui_error "Checksum mismatch — download may be corrupted. Exiting."
+      ui_error "Checksum mismatch. Download may be corrupted. Exiting."
       rm -f "$VENTOY_ARCHIVE" "$sha_file"
       exit 1
     fi
   else
-    ui_warn "Could not fetch checksum file — skipping verification."
+    ui_warn "Could not fetch checksum file. Skipping verification."
   fi
 }
 
