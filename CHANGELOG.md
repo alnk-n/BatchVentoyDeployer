@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--help` flag with usage summary and dependency list
 - `install.sh` copies itself to `/usr/local/share/$APP_NAME/` so `--update` can invoke it from the system path
 - Signal trap cleans up mount points on interrupt
-- System disk guard — script refuses to format the disk hosting the root filesystem
+- System disk guard: script refuses to format the disk hosting the root filesystem
 - Input validation against `lsblk` before any disk is touched
 - Early abort if no `.iso` files are found in `$ISO_SRC` before any formatting begins
 - Disk space check against total ISO size before copying
@@ -30,14 +30,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All user-facing output routed through `lib/ui.sh` helper functions in preparation for a Zenity GUI layer
 - Support files installed to `/usr/local/share/$APP_NAME/`, main script to `/usr/local/bin/$SUMMON_COMMAND`
 ### Fixed
-- Marker version check was comparing full file contents against version string — it now reads line 1 only via `sed -n '1p'`
-- `MARKER_FILE` was resolving to `/root/.local/share/...` under `sudo` — it now uses `/home/$REAL_USER` explicitly
+- Marker version check was comparing full file contents against version string. It now reads line 1 only via `sed -n '1p'`
+- `MARKER_FILE` was resolving to `/root/.local/share/...` under `sudo`. It now uses `/home/$REAL_USER` explicitly
 - `REAL_USER` now falls back to `logname` before `$USER` to correctly identify the invoking user under `sudo`
 - `sed` and `cat` calls in marker checks protected with `|| true` to prevent `set -euo pipefail` exiting silently
-- Ventoy checksum URL corrected to `sha256.txt` — the previously assumed `.sha256` filename returned a 404
+- Ventoy checksum URL corrected to `sha256.txt`. The previously assumed `.sha256` filename returned a 404
 - Checksum verification now strips carriage returns via `tr -d '\r'` before piping to `sha256sum -c`
 - Tar extraction was deleting the extracted directory instead of the `.tar.gz` archive
-- `chmod -R 777` removed — rsync runs without relaxing partition permissions
+- `chmod -R 777` removed. rsync runs without relaxing partition permissions
 - `ventoy_mnt` initialised before signal trap to prevent unbound variable errors on early interrupt
 
 ---
