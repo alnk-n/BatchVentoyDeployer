@@ -28,13 +28,20 @@ ui_prompt_disk_selection() {
   export DISK_CHOICES
 }
  
-ui_confirm_device() {
-  local device="$1"
-  local model size
-  model=$(lsblk --nodeps -no MODEL "$device" 2>/dev/null | xargs)
-  size=$(lsblk --nodeps -no SIZE "$device" 2>/dev/null | xargs)
-  printf "\nAbout to erase %s (%s %s).\n" "$device" "$model" "$size"
-  read -r -p "Are you sure? [y/N] > " confirm
+ui_confirm_selection() {
+  local devices=("$@")
+
+  printf "\nThe following disks will be erased and formatted:\n\n"
+  for device in "${devices[@]}"; do
+    local model size
+    model=$(lsblk --nodeps -no MODEL "$device" 2>/dev/null | xargs)
+    size=$(lsblk --nodeps -no SIZE "$device" 2>/dev/null | xargs)
+    printf "  %s — %s %s\n" "$device" "$model" "$size"
+  done
+
+  printf "\nThis will destroy all data on the above disks.\n"
+  printf "The process will then run unattended until complete.\n\n"
+  read -r -p "Confirm and proceed? [y/N] > " confirm
   case "$confirm" in
     [yY]) return 0 ;;
     *)    return 1 ;;
@@ -45,15 +52,3 @@ ui_msg()     { printf "%s\n" "$1"; }
 ui_success() { printf "✔ %s\n" "$1"; }
 ui_warn()    { printf "⚠ %s\n" "$1"; }
 ui_error()   { printf "✘ %s\n" "$1" >&2; }
- 
-# # --- Quick UI Test (remove before production) ---
-# if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-#     ui_header
-#     ui_list_disks
-#     ui_prompt_disk_selection
-#     ui_msg     "Processing your selection: $DISK_CHOICES"
-#     ui_confirm_device "/dev/sda"
-#     ui_success "Device confirmed and formatted successfully."
-#     ui_warn    "This device has an existing Ventoy installation — it will be overwritten."
-#     ui_error   "Failed to write to device: permission denied."
-# fi
