@@ -38,7 +38,7 @@ fi
 # Install dependencies
 ui_msg "Installing dependencies..."
 apt-get update -qq
-if apt-get install -y curl zenity rsync; then
+if apt-get install -y curl zenity rsync mkexfatfs; then
   ui_success "Dependencies installed."
 else
   ui_error "Failed to install dependencies."
