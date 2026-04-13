@@ -46,5 +46,7 @@ ventoy_extract() {
 # Installs Ventoy onto a block device.
 ventoy_install_to() {
   local device="$1"
-  printf 'y\ny\n' | "$VENTOY_SCRIPT" -I -s -g "$device"
+  local ventoy_dir
+  ventoy_dir="$(dirname "$VENTOY_SCRIPT")"
+  (cd "$ventoy_dir" && printf 'y\ny\n' | ./Ventoy2Disk.sh -I -s -g "$device")
 }

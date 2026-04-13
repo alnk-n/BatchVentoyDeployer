@@ -38,7 +38,7 @@ fi
 # Install dependencies
 ui_msg "Installing dependencies..."
 apt-get update -qq
-if apt-get install -y curl zenity rsync exfatprogs; then
+if apt-get install -y curl zenity rsync exfat-fuse exfatprogs; then
   ui_success "Dependencies installed."
 else
   ui_error "Failed to install dependencies."
