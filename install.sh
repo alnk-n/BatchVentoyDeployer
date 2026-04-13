@@ -56,6 +56,10 @@ if [ "$FORCE_UPDATE" = true ] || [ ! -f "$MARKER_FILE" ] || [ "$marker_version" 
   fi
   ventoy_download
   ventoy_extract
+  # Move Ventoy into the system share directory
+  rm -rf "/usr/local/share/$APP_NAME/$VENTOY_DIR"
+  mv "$SCRIPT_DIR/$VENTOY_DIR" "/usr/local/share/$APP_NAME/"
+  ui_success "Ventoy moved to /usr/local/share/$APP_NAME/$VENTOY_DIR"
 else
   ui_msg "Ventoy ${VENTOY_VERSION} already installed. Skipping download."
 fi
