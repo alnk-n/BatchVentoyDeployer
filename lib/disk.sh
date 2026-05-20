@@ -10,12 +10,6 @@ disk_exists() {
   [ -b "$device" ]
 }
 
-# Checks whether a device appears in lsblk output
-disk_is_known() {
-  local choice="$1"
-  lsblk --nodeps -no NAME 2>/dev/null | grep -qx "$choice"
-}
-
 # Checks whether a device is the disk hosting the root filesystem.
 # Returns 0 (true) if it is the system disk
 disk_is_system_disk() {

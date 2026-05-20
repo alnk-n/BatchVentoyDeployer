@@ -20,6 +20,25 @@ case "${1:-}" in
   --update)
     exec sudo "/usr/local/share/$APP_NAME/install.sh" --update
     ;;
+  --help|-h)
+    printf "Usage: sudo %s [--help|--update]\n\n" "$SUMMON_COMMAND"
+    printf "What this tool does:\n"
+    printf "  Formats USB drives with Ventoy and copies ISO files onto them.\n"
+    printf "  Select your drives, confirm once — it handles the rest unattended.\n\n"
+    printf "Options:\n"
+    printf "  --help, -h    Show this message and exit\n"
+    printf "  --update      Re-download and reinstall Ventoy (run after a version change)\n\n"
+    printf "Before running:\n"
+    printf "  Place your .iso files in: %s\n\n" "$ISO_SRC"
+    printf "Configuration (managed by your admin):\n"
+    printf "  Ventoy version : %s\n" "$VENTOY_VERSION"
+    printf "  ISO source     : %s\n" "$ISO_SRC"
+    printf "  Log file       : %s\n" "$LOG_FILE"
+    printf "  Config file    : /usr/local/share/%s/config/defaults.conf\n\n" "$APP_NAME"
+    printf "  To change settings, open the config file as root:\n"
+    printf "  sudo nano /usr/local/share/%s/config/defaults.conf\n" "$APP_NAME"
+    exit 0
+    ;;
 esac
 
 # Superuser check
@@ -34,18 +53,72 @@ if [ ! -f "$MARKER_FILE" ] || [ "$(sed -n '1p' "$MARKER_FILE" 2>/dev/null || tru
   exit 1
 fi
 
-# Initialise mount point variable before trap so cleanup is always safe
-ventoy_mnt=""
+# Array of active mount points tracked for trap cleanup
+active_mnts=()
 
-# Trap for cleanup on interrupt
+# Trap: signal the whole process group then clean up any registered mounts
 trap '
   ui_warn "Interrupted. Cleaning up..."
-  if [ -n "$ventoy_mnt" ] && mountpoint -q "$ventoy_mnt" 2>/dev/null; then
-    umount "$ventoy_mnt" 2>/dev/null
-    rmdir "$ventoy_mnt" 2>/dev/null
-  fi
+  kill -- -$$ 2>/dev/null || true
+  for _mnt in "${active_mnts[@]:-}"; do
+    if mountpoint -q "$_mnt" 2>/dev/null; then
+      umount "$_mnt" 2>/dev/null
+      rmdir "$_mnt" 2>/dev/null
+    fi
+  done
   exit 1
 ' INT TERM
+
+# Installs Ventoy on one drive, mounts the data partition, copies ISOs, unmounts.
+# Returns 0 on success, 1 on any failure.
+process_drive() {
+  local choice="$1"
+  local device="/dev/$choice"
+  local mnt="/mnt/ventoy_$choice"
+
+  printf "\n[Processing] %s\n" "$device"
+
+  ui_msg "Formatting $device with Ventoy..."
+  if ! ventoy_install_to "$device"; then
+    ui_error "Ventoy installation failed for $device."
+    return 1
+  fi
+
+  # Wait for the kernel to re-read the new GPT written by Ventoy
+  udevadm settle --timeout=10
+  sleep 2
+
+  local ventoy_part
+  ventoy_part=$(disk_get_ventoy_part "$device")
+  if [ -z "$ventoy_part" ]; then
+    ui_error "Could not find Ventoy partition on $device."
+    return 1
+  fi
+
+  if ! disk_mount "$ventoy_part" "$mnt"; then
+    ui_error "Failed to mount $ventoy_part."
+    return 1
+  fi
+  active_mnts+=("$mnt")
+
+  local required
+  required=$(disk_iso_total_size "$ISO_SRC")
+  if ! disk_has_space "$mnt" "$required"; then
+    ui_error "Not enough space on $device for all ISOs."
+    disk_unmount "$mnt"
+    return 1
+  fi
+
+  ui_msg "Copying ISOs from $ISO_SRC to $mnt..."
+  if ! disk_copy_isos "$ISO_SRC" "$mnt"; then
+    ui_error "Failed to copy ISOs to $device."
+    disk_unmount "$mnt"
+    return 1
+  fi
+
+  disk_unmount "$mnt"
+  ui_success "$device is ready."
+}
 
 # Early ISO check, abort before touching any disks
 iso_count=$(find "$ISO_SRC" -maxdepth 1 -name "*.iso" 2>/dev/null | wc -l)
@@ -69,13 +142,8 @@ validated_choices=""
 for choice in $DISK_CHOICES; do
   device="/dev/$choice"
 
-  if ! disk_is_known "$choice"; then
-    ui_error "$choice is not a recognised disk. Skipping."
-    continue
-  fi
-
   if ! disk_exists "$device"; then
-    ui_error "$device does not exist. Skipping."
+    ui_error "$device does not exist or is not a block device. Skipping."
     continue
   fi
 
@@ -105,66 +173,36 @@ if ! ui_confirm_selection "${validated_devices[@]}"; then
   exit 0
 fi
 
-# Count drives for progress display
+# Fan-out: launch all drives in parallel, capturing output per drive
+declare -A drive_pids
+declare -A drive_logs
+
+for choice in $validated_choices; do
+  log=$(mktemp "/tmp/bvd_${choice}_XXXXXX")
+  drive_logs["$choice"]="$log"
+  process_drive "$choice" >"$log" 2>&1 &
+  drive_pids["$choice"]=$!
+  ui_msg "Started /dev/$choice (PID ${drive_pids[$choice]})"
+done
+
+# Fan-in: wait for each drive in order and print its buffered output
 total=$(echo "$validated_choices" | wc -w)
 current=0
+overall_ok=true
 
 for choice in $validated_choices; do
   current=$((current + 1))
-  device="/dev/$choice"
-  ventoy_mnt="/mnt/ventoy_$choice"
-
-  printf "\n[%d/%d] Processing %s\n" "$current" "$total" "$device"
-
-  # Install Ventoy
-  ui_msg "Formatting $device with Ventoy..."
-  sleep 1
-  if ! ventoy_install_to "$device"; then
-    ui_error "Ventoy installation failed for $device. Skipping."
-    continue
-  fi
-
-  # Settle partition table
-  udevadm settle --timeout=10
-  sleep 2
-
-  # Find Ventoy partition
-  ventoy_part=$(disk_get_ventoy_part "$device")
-  if [ -z "$ventoy_part" ]; then
-    ui_error "Could not find Ventoy partition on $device. Skipping."
-    continue
-  fi
-
-  # Mount
-  if ! disk_mount "$ventoy_part" "$ventoy_mnt"; then
-    ui_error "Failed to mount $ventoy_part. Skipping."
-    ventoy_mnt=""
-    continue
-  fi
-
-  # Space check
-  required=$(disk_iso_total_size "$ISO_SRC")
-  if ! disk_has_space "$ventoy_mnt" "$required"; then
-    ui_error "Not enough space on $device for all ISOs. Skipping."
-    disk_unmount "$ventoy_mnt"
-    ventoy_mnt=""
-    continue
-  fi
-
-  # Copy ISOs
-  ui_msg "Copying ISOs from $ISO_SRC to $ventoy_mnt..."
-  if ! disk_copy_isos "$ISO_SRC" "$ventoy_mnt"; then
-    ui_error "Failed to copy ISOs to $device."
-    disk_unmount "$ventoy_mnt"
-    ventoy_mnt=""
-    continue
-  fi
-
-  # Unmount
-  disk_unmount "$ventoy_mnt"
-  ventoy_mnt=""
-  ui_success "$device is ready."
+  wait "${drive_pids[$choice]}"
+  exit_code=$?
+  printf "\n[%d/%d] /dev/%s\n" "$current" "$total" "$choice"
+  cat "${drive_logs[$choice]}"
+  rm -f "${drive_logs[$choice]}"
+  [ "$exit_code" -ne 0 ] && overall_ok=false
 done
 
 printf "\n"
-ui_success "All selected drives have been processed."
+if [ "$overall_ok" = true ]; then
+  ui_success "All selected drives have been processed."
+else
+  ui_warn "Processing complete with errors on one or more drives."
+fi
