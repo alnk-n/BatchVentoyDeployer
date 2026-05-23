@@ -21,7 +21,7 @@ drives in one operation.
 - Bash 4.0+
 - Root access (`sudo`)
 - Internet connection for first-time Ventoy download
-- Dependencies installed automatically by `install.sh`: `curl`, `zenity`, `rsync`, `exfat-fuse`, `exfatprogs`
+- Dependencies installed automatically by `install.sh`: `curl`, `zenity`, `rsync`, `exfat-fuse`, `exfatprogs`, `parted`
 
 ## Quick Start
 
@@ -89,6 +89,13 @@ Edit `/usr/local/share/batchventoydeployer/config/defaults.conf` (as root):
 | `SUMMON_COMMAND` | `ventoy`                                   | Command name placed in `/usr/local/bin/`          |
 | `ISO_SRC`        | `~/ISOs` of the invoking user              | Directory scanned for `.iso` files                |
 | `LOG_FILE`       | `/var/log/batchventoydeployer.log`         | Append-only log of all runs                       |
+
+### What gets installed
+
+| Path | Contents |
+|------|----------|
+| `/usr/local/bin/ventoy` | Main executable (name set by `SUMMON_COMMAND`) |
+| `/usr/local/share/batchventoydeployer/` | Support files: `lib/`, `config/`, `install.sh`, and the Ventoy release |
 
 Changes to `SUMMON_COMMAND` take effect after running `make update`.
 The old command binary is automatically removed from `/usr/local/bin/`.
