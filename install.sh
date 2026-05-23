@@ -54,11 +54,11 @@ if [ "$FORCE_UPDATE" = true ] || [ ! -f "$MARKER_FILE" ] || [ "$marker_version" 
   if [ -n "$old_command" ] && [ "$old_command" != "$SUMMON_COMMAND" ]; then
     rm -f "/usr/local/bin/$old_command"
   fi
-  ventoy_download
-  ventoy_extract
-  # Move Ventoy into the system share directory
+  _vtmp=$(mktemp -d)
+  (cd "$_vtmp" && ventoy_download && ventoy_extract)
   rm -rf "/usr/local/share/$APP_NAME/$VENTOY_DIR"
-  mv "$SCRIPT_DIR/$VENTOY_DIR" "/usr/local/share/$APP_NAME/"
+  mv "$_vtmp/$VENTOY_DIR" "/usr/local/share/$APP_NAME/"
+  rm -rf "$_vtmp"
   ui_success "Ventoy moved to /usr/local/share/$APP_NAME/$VENTOY_DIR"
 else
   ui_msg "Ventoy ${VENTOY_VERSION} already installed. Skipping download."
