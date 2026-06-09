@@ -56,6 +56,7 @@ if [ "$FORCE_UPDATE" = true ] || [ ! -f "$MARKER_FILE" ] || [ "$marker_version" 
   fi
   _vtmp=$(mktemp -d)
   (cd "$_vtmp" && ventoy_download && ventoy_extract)
+  mkdir -p "/usr/local/share/$APP_NAME"
   rm -rf "/usr/local/share/$APP_NAME/$VENTOY_DIR"
   mv "$_vtmp/$VENTOY_DIR" "/usr/local/share/$APP_NAME/"
   rm -rf "$_vtmp"
