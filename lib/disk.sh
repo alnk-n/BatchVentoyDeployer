@@ -49,10 +49,22 @@ disk_unmount() {
   rmdir "$mnt"
 }
 
-# Copies all ISOs from source dir to destination with progress and checksum verification
+# Copies all ISOs from source dir to destination with progress and checksum verification.
+# Optional third argument: path to a status file; receives "copying:NN" lines as rsync progresses.
 disk_copy_isos() {
-  local src="$1" dst="$2"
-  rsync "$src/"*.iso "$dst"/ -v -h --progress --checksum
+  local src="$1" dst="$2" status_file="${3:-}"
+  if [ -n "$status_file" ]; then
+    rsync "$src/"*.iso "$dst"/ -h --info=progress2 --checksum 2>&1 | \
+      while IFS= read -r line; do
+        printf "%s\n" "$line"
+        if [[ "$line" =~ [[:space:]]([0-9]+)% ]]; then
+          printf "copying:%s" "${BASH_REMATCH[1]}" > "$status_file"
+        fi
+      done
+    return "${PIPESTATUS[0]}"
+  else
+    rsync "$src/"*.iso "$dst"/ -h --info=progress2 --checksum
+  fi
 }
 
 # Returns the total size in bytes of all ISOs in a directory
