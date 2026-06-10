@@ -48,5 +48,11 @@ ventoy_install_to() {
   local device="$1"
   local ventoy_dir
   ventoy_dir="$(dirname "$VENTOY_SCRIPT")"
-  (cd "$ventoy_dir" && printf 'y\ny\n' | ./Ventoy2Disk.sh -I -s -g "$device")
+  # Ventoy2Disk.sh extracts .xz tool binaries in-place on first run; parallel
+  # invocations from the same directory race on those files and corrupt them.
+  # flock serialises this one step while ISO copying still runs in parallel.
+  (
+    flock -x 9
+    cd "$ventoy_dir" && printf 'y\ny\n' | ./Ventoy2Disk.sh -I -s -g "$device"
+  ) 9>/var/lock/bvd-ventoy.lock
 }
